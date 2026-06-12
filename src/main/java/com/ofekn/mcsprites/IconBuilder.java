@@ -103,8 +103,6 @@ public class IconBuilder {
 
             String json = ItemAtlasPosition.CODEC.listOf().encodeStart(ops, positions).getOrThrow().toString();
             saveFiles(image, json, positions.size());
-
-            GhPagesSync.pushGHPages(GH_PAGES_DIR);
         }, 0);
     }
 
@@ -125,6 +123,8 @@ public class IconBuilder {
                 image.writeToFile(OUTPUT_DIR.resolve("atlas.png"));
                 Files.writeString(OUTPUT_DIR.resolve("items.json"), json);
                 LOGGER.info("exported {} items to {}", itemCount, OUTPUT_DIR.toAbsolutePath());
+
+                GhPagesSync.pushGHPages(GH_PAGES_DIR);
             } catch (IOException e) {
                 LOGGER.error("export failed", e);
             } finally {
