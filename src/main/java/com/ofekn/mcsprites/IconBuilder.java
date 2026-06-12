@@ -104,7 +104,7 @@ public class IconBuilder {
             String json = ItemAtlasPosition.CODEC.listOf().encodeStart(ops, positions).getOrThrow().toString();
             saveFiles(image, json, positions.size());
 
-            GhPagesSync.pushGHPages(GH_PAGES_DIR, "items");
+            GhPagesSync.pushGHPages(GH_PAGES_DIR);
         }, 0);
     }
 

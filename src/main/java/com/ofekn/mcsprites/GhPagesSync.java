@@ -20,35 +20,31 @@ public class GhPagesSync {
      * Does not touch the main repo's working tree or current branch.
      *
      * @param sourcePath directory containing the new/updated icon files
-     * @param targetDir  folder name inside the gh-pages branch (e.g. "items", "blocks")
      */
-    public static void pushGHPages(Path sourcePath, String targetDir) {
+    public static void pushGHPages(Path sourcePath) {
         try {
             ensureWorktreeExists();
-
             Path absoluteSource = sourcePath.toAbsolutePath().normalize();
 
-            // Make sure the worktree is on gh-pages (in case of manual edits elsewhere).
             String currentBranch = currentBranchOf(GH_PAGES_WORKTREE);
             if (!GH_PAGES_BRANCH.equals(currentBranch)) {
                 run("git", "checkout", GH_PAGES_BRANCH);
             }
 
-            Path targetPath = GH_PAGES_WORKTREE.resolve(targetDir);
-            Files.createDirectories(targetPath);
+            // Remove everything tracked so stale files get cleaned up.
+            run("git", "rm", "-rf", "--quiet", "--ignore-unmatch", ".");
 
-            copyDirectory(absoluteSource, targetPath);
+            copyDirectory(absoluteSource, GH_PAGES_WORKTREE);
 
-            run("git", "add", targetDir);
+            run("git", "add", "-A");
 
             int status = runAllowFail("git", "diff", "--cached", "--quiet");
             if (status == 0) {
                 System.out.println("No changes to commit.");
             } else {
-                run("git", "commit", "-m", "Update " + targetDir + " icons");
+                run("git", "commit", "-m", "Update gh-pages");
                 run("git", "push", "origin", GH_PAGES_BRANCH);
             }
-
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException("Failed to push to " + GH_PAGES_BRANCH, e);
         }
