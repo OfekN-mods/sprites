@@ -17,6 +17,9 @@
 	"entrypoints": {
 		"main": [
 			"com.ofekn.mcsprites.Sprites"
+		],
+		"client": [
+			"com.ofekn.mcsprites.SpritesClient"
 		]
 	},
 	"mixins": [

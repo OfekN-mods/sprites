@@ -3,7 +3,7 @@
 	"package": "com.ofekn.mcsprites.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"ExampleMixin"
+		"GameRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
