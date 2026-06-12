@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class IconBuilder {
     private static final Logger LOGGER = LogUtils.getLogger();
     public static final AtomicBoolean SHOULD_BUILD = new AtomicBoolean(true);
-    private static final Path GH_PAGES_DIR = Path.of("./gt-pages");
+    private static final Path GH_PAGES_DIR = Path.of("./gh-pages");
     private static final Path OUTPUT_DIR = GH_PAGES_DIR.resolve("items");
 
     public static void build() {
