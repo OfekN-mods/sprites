@@ -23,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -123,7 +124,8 @@ public class IconBuilder {
                 image.writeToFile(ATLAS_DIR.resolve("atlas.png"));
                 String json = ItemAtlasPosition.CODEC.listOf().encodeStart(ops, positions).getOrThrow().toString();
                 Files.writeString(ATLAS_DIR.resolve("items.json"), json);
-                LOGGER.info("exported {} items to {}", positions, ATLAS_DIR.toAbsolutePath());
+                saveItems(image, positions);
+                LOGGER.info("exported {} items to {}", positions.size(), ATLAS_DIR.toAbsolutePath());
                 result.complete(null);
             } catch (Throwable e) {
                 LOGGER.error("export failed", e);
@@ -133,6 +135,34 @@ public class IconBuilder {
             }
         });
         return result;
+    }
+
+    private static void saveItems(NativeImage atlas, List<ItemAtlasPosition> positions) throws IOException {
+        Files.createDirectories(ITEMS_DIR);
+        int textureSize = atlas.getWidth();
+        for (ItemAtlasPosition pos : positions) {
+            List<Float> uv = pos.uv();
+            int x0 = Math.round(uv.get(0) * textureSize);
+            int y0 = Math.round(uv.get(1) * textureSize);
+            int x1 = Math.round(uv.get(2) * textureSize);
+            int y1 = Math.round(uv.get(3) * textureSize);
+            int w = x1 - x0;
+            int h = y1 - y0;
+            if (w <= 0 || h <= 0) continue;
+
+            String itemPath = pos.item().unwrapKey().orElseThrow().identifier().getPath();
+            String sanitizedName = pos.name().replaceAll("[\\\\/:*?\"<>|\\x00-\\x1f\\x7f]", "");
+            String filename = itemPath + "-" + sanitizedName + ".png";
+
+            NativeImage sprite = new NativeImage(w, h, false);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    sprite.setPixel(x, y, atlas.getPixel(x0 + x, y0 + y));
+                }
+            }
+            sprite.writeToFile(ITEMS_DIR.resolve(filename));
+            sprite.close();
+        }
     }
 
     private static List<ItemStack> getAllItems(RegistryAccess registryAccess) {
