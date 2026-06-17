@@ -23,29 +23,26 @@ import net.minecraft.world.item.ItemStack;
 import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IconBuilder {
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static final AtomicBoolean SHOULD_BUILD = new AtomicBoolean(true);
-    private static final Path GH_PAGES_DIR = Path.of("./gh-pages");
-    private static final Path OUTPUT_DIR = GH_PAGES_DIR.resolve("items");
+    public static final AtomicBoolean ALREADY_STARTED = new AtomicBoolean(false);
+    private static final Path ATLAS_DIR = GhPagesSync.DIR.resolve("atlas");
+    private static final Path ITEMS_DIR = GhPagesSync.DIR.resolve("items");
 
     public static void build() {
-//        if (!SHOULD_BUILD.getAndSet(false)) return;
-
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level == null) {
-//            LOGGER.error("Can't build atlas outside a level");
             return;
         }
-        if (!SHOULD_BUILD.getAndSet(false)) return;
+        if (ALREADY_STARTED.getAndSet(true)) return;
         RegistryAccess registryAccess = minecraft.level.registryAccess();
         List<ItemStack> items = getAllItems(registryAccess);
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registryAccess);
@@ -61,7 +58,9 @@ public class IconBuilder {
             return;
         }
 
-        downloadAndExport(result.texture(), textureSize, atlas, result.positions(), ops);
+        fetchAtlasImage(result.texture(), textureSize, atlas)
+                .thenCompose(image -> IconBuilder.saveAtlas(image, result.positions(), ops))
+                .thenRun(GhPagesSync::pushGHPages);
     }
 
     private record BuildResult(GpuTexture texture, List<ItemAtlasPosition> positions) {}
@@ -86,7 +85,8 @@ public class IconBuilder {
         return new BuildResult(texture, positions);
     }
 
-    private static void downloadAndExport(GpuTexture texture, int textureSize, GuiItemAtlas atlas, List<ItemAtlasPosition> positions, RegistryOps<JsonElement> ops) {
+    private static CompletableFuture<NativeImage> fetchAtlasImage(GpuTexture texture, int textureSize, GuiItemAtlas atlas) {
+        CompletableFuture<NativeImage> result = new CompletableFuture<>();
         int pixelSize = texture.getFormat().blockSize();
 
         GpuBuffer gpuBuffer = RenderSystem.getDevice().createBuffer(
@@ -100,10 +100,9 @@ public class IconBuilder {
             }
             gpuBuffer.close();
             atlas.close();
-
-            String json = ItemAtlasPosition.CODEC.listOf().encodeStart(ops, positions).getOrThrow().toString();
-            saveFiles(image, json, positions.size());
+            result.complete(image);
         }, 0);
+        return result;
     }
 
     private static void copyPixelsFlipped(GpuBufferSlice.MappedView mapped, NativeImage image, int textureSize, int pixelSize) {
@@ -116,21 +115,24 @@ public class IconBuilder {
         }
     }
 
-    private static void saveFiles(NativeImage image, String json, int itemCount) {
+    private static CompletableFuture<Void> saveAtlas(NativeImage image, List<ItemAtlasPosition> positions, RegistryOps<JsonElement> ops) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
         Util.ioPool().execute(() -> {
             try {
-                Files.createDirectories(OUTPUT_DIR);
-                image.writeToFile(OUTPUT_DIR.resolve("atlas.png"));
-                Files.writeString(OUTPUT_DIR.resolve("items.json"), json);
-                LOGGER.info("exported {} items to {}", itemCount, OUTPUT_DIR.toAbsolutePath());
-
-                GhPagesSync.pushGHPages(GH_PAGES_DIR);
-            } catch (IOException e) {
+                Files.createDirectories(ATLAS_DIR);
+                image.writeToFile(ATLAS_DIR.resolve("atlas.png"));
+                String json = ItemAtlasPosition.CODEC.listOf().encodeStart(ops, positions).getOrThrow().toString();
+                Files.writeString(ATLAS_DIR.resolve("items.json"), json);
+                LOGGER.info("exported {} items to {}", positions, ATLAS_DIR.toAbsolutePath());
+                result.complete(null);
+            } catch (Throwable e) {
                 LOGGER.error("export failed", e);
+                result.completeExceptionally(e);
             } finally {
                 image.close();
             }
         });
+        return result;
     }
 
     private static List<ItemStack> getAllItems(RegistryAccess registryAccess) {
