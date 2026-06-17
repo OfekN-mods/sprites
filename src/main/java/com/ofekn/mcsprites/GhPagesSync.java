@@ -39,6 +39,9 @@ public class GhPagesSync {
      * Does not touch the main repo's working tree or current branch.
      */
     public static void pushGHPages() {
+        if (!SpritesToggles.PUSH_GIT) {
+            return;
+        }
         try {
             run("git", "add", "-A");
 

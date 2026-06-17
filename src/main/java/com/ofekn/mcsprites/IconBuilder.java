@@ -61,7 +61,15 @@ public class IconBuilder {
 
         fetchAtlasImage(result.texture(), textureSize, atlas)
                 .thenCompose(image -> IconBuilder.saveAtlas(image, result.positions(), ops))
-                .thenRun(GhPagesSync::pushGHPages);
+                .thenRun(GhPagesSync::pushGHPages)
+                .thenRun(IconBuilder::closeGame)
+        ;
+    }
+
+    private static void closeGame() {
+        if (SpritesToggles.CLOSE_GAME) {
+            Minecraft.getInstance().stop();
+        }
     }
 
     private record BuildResult(GpuTexture texture, List<ItemAtlasPosition> positions) {}

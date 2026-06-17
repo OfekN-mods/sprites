@@ -12,12 +12,19 @@ On first render tick after loading a world, it:
 ## Usage
 
 1. Clone the repo
-2. Run from IDE or via:
-   ```bash
-   ./gradlew runClient
-   ```
-3. Load any world — export runs automatically on the first frame
-4. Output lands in `.gh-pages-worktree/` inside the repo and is pushed to `origin/gh-pages`
+2. Edit the toggles (see below)
+3. Run from IDE or via `./gradlew runClient`
+4. Load any world — export runs automatically on the first frame
+5. Output lands in `.gh-pages-worktree/` inside the repo and is pushed to `origin/gh-pages` if enabled
+
+### Toggles
+
+Edit `SpritesToggles.java` before running:
+
+| Field | Default | Effect |
+|---|---|---|
+| `PUSH_GIT` | `false` | Commit and push output to `gh-pages` branch after export |
+| `CLOSE_GAME` | `true` | Close the game automatically after export finishes |
 
 Requires Java 25+.
 
