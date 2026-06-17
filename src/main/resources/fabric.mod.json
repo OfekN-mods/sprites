@@ -3,14 +3,11 @@
 	"id": "sprites",
 	"version": "${version}",
 	"name": "Sprites",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "A simple tool to extract sprites from minecraft",
 	"authors": [
-		"Me!"
+		"Ofek"
 	],
-	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
-	},
+	"contact": {},
 	"license": "CC0-1.0",
 	"icon": "assets/sprites/icon.png",
 	"environment": "*",
