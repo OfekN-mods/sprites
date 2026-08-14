@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.Comparator;
 import java.util.stream.Stream;
 
 public class GhPagesSync {
@@ -21,10 +22,11 @@ public class GhPagesSync {
         try {
             ensureWorktreeExists();
 
-            // checkout if in the wrong branch
+            // switch if in the wrong branch (use "switch" not "checkout" — worktrees in
+            // detached-HEAD state reject "checkout <branch>" if that branch is owned by this worktree)
             String currentBranch = currentBranchOf(DIR);
             if (!GH_PAGES_BRANCH.equals(currentBranch)) {
-                run("git", "checkout", GH_PAGES_BRANCH);
+                run("git", "switch", GH_PAGES_BRANCH);
             }
 
             // Remove everything tracked so stale files get cleaned up.
@@ -59,7 +61,12 @@ public class GhPagesSync {
 
     private static void ensureWorktreeExists() throws IOException, InterruptedException {
         if (Files.isDirectory(DIR)) {
-            return;
+            if (Files.exists(DIR.resolve(".git"))) {
+                return; // valid worktree
+            }
+            // Directory exists but has no .git file — broken/prunable worktree, recreate it
+            runAllowFailIn(REPO_ROOT, "git", "worktree", "prune");
+            deleteDirectory(DIR);
         }
 
         if (!branchExists(GH_PAGES_BRANCH)) {
@@ -137,5 +144,13 @@ public class GhPagesSync {
         pb.inheritIO();
         Process process = pb.start();
         return process.waitFor();
+    }
+
+    private static void deleteDirectory(Path dir) throws IOException {
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try { Files.delete(p); } catch (IOException e) { throw new RuntimeException(e); }
+            });
+        }
     }
 }

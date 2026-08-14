@@ -12,14 +12,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.render.GuiItemAtlas;
 import net.minecraft.client.renderer.item.TrackingItemStackRenderState;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
 import net.minecraft.world.flag.FeatureFlags;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.CreativeModeTabs;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.*;
 import org.lwjgl.system.MemoryUtil;
 import org.slf4j.Logger;
 
@@ -29,8 +28,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class IconBuilder {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -174,6 +175,20 @@ public class IconBuilder {
     }
 
     private static List<ItemStack> getAllItems(RegistryAccess registryAccess) {
+        List<ItemStack> creativeTabsStacks = getCreativeTabsItems(registryAccess);
+        Set<Item> creativeTabsItems = creativeTabsStacks.stream().map(ItemStack::getItem).collect(Collectors.toSet());
+
+        List<ItemStack> result = new ArrayList<>(creativeTabsStacks);
+        for (Item item : BuiltInRegistries.ITEM) {
+            if (item == Items.AIR) continue;
+            if (creativeTabsItems.contains(item)) continue;
+            result.add(item.getDefaultInstance());
+        }
+
+        return result;
+    }
+
+    private static List<ItemStack> getCreativeTabsItems(RegistryAccess registryAccess) {
         var flags = FeatureFlags.REGISTRY.allFlags();
         var parameters = new CreativeModeTab.ItemDisplayParameters(flags, true, registryAccess);
         var tabs = CreativeModeTabs.allTabs();
