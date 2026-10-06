@@ -103,7 +103,8 @@ public class IconBuilder {
                 () -> "ItemIcons download", GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST,
                 (long) textureSize * textureSize * pixelSize);
 
-        RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(texture, gpuBuffer, 0L, () -> {
+        RenderSystem.getDevice().createCommandEncoder().copyTextureToBuffer(texture, gpuBuffer, 0L, 0);
+        RenderSystem.queueFencedTask(() -> {
             NativeImage image = new NativeImage(textureSize, textureSize, false);
             try (GpuBufferSlice.MappedView mapped = gpuBuffer.map(true, false)) {
                 copyPixelsFlipped(mapped, image, textureSize, pixelSize);
@@ -111,7 +112,7 @@ public class IconBuilder {
             gpuBuffer.close();
             atlas.close();
             result.complete(image);
-        }, 0);
+        });
         return result;
     }
 
